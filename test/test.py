@@ -1,4 +1,4 @@
-# SPDX-FileCopyrightText: © 2024 Tiny Tapeout
+# SPDX-FileCopyrightText: © 2025 Marco
 # SPDX-License-Identifier: Apache-2.0
 
 import cocotb
@@ -10,31 +10,40 @@ from cocotb.triggers import ClockCycles
 async def test_project(dut):
     dut._log.info("Start")
 
-    # Set the clock period to 10 us (100 KHz)
-    clock = Clock(dut.clk, 10, unit="us")
+    # 100 kHz clock (period = 10 µs, matches TinyTapeout template)
+    clock = Clock(dut.clk, 10, units="us")
     cocotb.start_soon(clock.start())
 
-    # Reset
-    dut._log.info("Reset")
-    dut.ena.value = 1
+    # ---------- reset ----------
+    dut.ena.value   = 1
     dut.ui_in.value = 0
     dut.uio_in.value = 0
     dut.rst_n.value = 0
-    await ClockCycles(dut.clk, 10)
+    await ClockCycles(dut.clk, 5)
     dut.rst_n.value = 1
-
-    dut._log.info("Test project behavior")
-
-    # Set the input values you want to test
-    dut.ui_in.value = 20
-    dut.uio_in.value = 30
-
-    # Wait for one clock cycle to see the output values
     await ClockCycles(dut.clk, 1)
 
-    # The following assersion is just an example of how to check the output values.
-    # Change it to match the actual expected output of your module:
-    assert dut.uo_out.value == 50
+    # ---------- load 0x05 into the counter ----------
+    # ui_in[3:0] = 0b0100 → drive_out=0, do_load=1, up=0, count_en=0
+    dut.uio_in.value = 0x05
+    dut.ui_in.value  = 0b0100
+    await ClockCycles(dut.clk, 1)
 
-    # Keep testing the module by changing the input values, waiting for
-    # one or more clock cycles, and asserting the expected output values.
+    # stop loading + make output visible: ui_in[3:0] = 0b1000
+    dut.ui_in.value = 0b1000
+    await ClockCycles(dut.clk, 1)
+    assert int(dut.uo_out.value) == 0x05, "load failed"
+
+    # ---------- count up by one ----------
+    # ui_in[3:0] = 0b1011 → drive_out=1, do_load=0, up=1, count_en=1
+    dut.ui_in.value = 0b1011
+    await ClockCycles(dut.clk, 1)
+    assert int(dut.uo_out.value) == 0x06, "count up failed"
+
+    # ---------- float the tri-state bus ----------
+    # drive_out=0 so OE should be low
+    dut.ui_in.value = 0b0011  # drive_out=0, still counting just for fun
+    await ClockCycles(dut.clk, 1)
+    assert int(dut.uio_oe.value) == 0x00, "bus should be high-Z now"
+
+    dut._log.info("PASS")
