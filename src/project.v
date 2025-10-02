@@ -30,7 +30,7 @@ module tt_um_example (
         end 
 
         else if (ena && do_load) begin
-            count_q <= d;
+            count_q <= uio_in;
         end 
         
         else if (ena && count_en) begin
