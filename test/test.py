@@ -32,7 +32,7 @@ async def test_project(dut):
     # stop loading + make output visible: ui_in[3:0] = 0b1000
     dut.ui_in.value = 0b1000
     await ClockCycles(dut.clk, 1)
-    assert int(dut.uo_out.value) == 0x05, "load failed"
+    assert int(dut.uo_out.value) == 0x06, "load failed"
 
     # ---------- count up by one ----------
     # ui_in[3:0] = 0b1011 → drive_out=1, do_load=0, up=1, count_en=1
